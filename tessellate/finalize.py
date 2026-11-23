@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """finalize.py JAR MODID OUTDIR: append description sentence to MODID's [[mods]] block, write OUTDIR/<stem>-tessellate.jar + OUTDIR/coords.env. modId/version untouched."""
-import re, sys, zipfile, os
+import re, sys, zipfile, os, shlex
 
 SENTENCE = os.environ.get("TESS_SENTENCE", "Patched for Tessellate async region ticking.")
 SUFFIX = os.environ.get("TESS_SUFFIX", "tessellate")
@@ -58,7 +58,7 @@ def main(jar, modid, outdir):
     if not version:
         raise SystemExit("no version for %s" % modid)
     with open(os.path.join(outdir, "coords.env"), "w") as f:
-        f.write("MOD_VERSION=%s\nOUT_JAR=%s\n" % (version, os.path.basename(out)))
+        f.write("MOD_VERSION=%s\nOUT_JAR=%s\n" % (shlex.quote(version), shlex.quote(os.path.basename(out))))
     print(out, version)
 
 

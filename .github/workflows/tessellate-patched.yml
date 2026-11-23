@@ -54,7 +54,7 @@ jobs:
         working-directory: src
         run: |
           git config user.name ci && git config user.email ci@invalid
-          sh ./gradlew :neoforge:remapJar -x test --no-daemon
+          bash ./gradlew :neoforge:remapJar -x test --no-daemon
 
       - name: Finalize jar
         run: |
