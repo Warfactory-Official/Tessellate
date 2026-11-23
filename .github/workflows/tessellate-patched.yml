@@ -1,0 +1,76 @@
+name: Tessellate patched build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+    paths: [ 'tessellate/**', '.github/workflows/tessellate-patched.yml' ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tessellate-patched
+  cancel-in-progress: true
+
+env:
+  UPSTREAM_REF: c7132ea8b956e609889cca4638185bb469510469
+  MOD_ID: tessellate
+  MAVEN_GROUP: com.wf.tessellate
+  MAVEN_ARTIFACT: tessellate-neoforge-c2me
+  TESS_SENTENCE: Patched for C2ME compatibility under Tessellate async region ticking.
+  TESS_SUFFIX: c2me-0001
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch set
+        uses: actions/checkout@v4
+        with:
+          path: ci
+
+      - name: Checkout upstream base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.UPSTREAM_REF }}
+          fetch-depth: 0
+          path: src
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Apply patches
+        run: bash ci/tessellate/apply.sh src
+
+
+      - name: Build
+        working-directory: src
+        run: |
+          git config user.name ci && git config user.email ci@invalid
+          sh ./gradlew :neoforge:remapJar -x test --no-daemon
+
+      - name: Finalize jar
+        run: |
+          set -euo pipefail
+          jar=$(ls src/neoforge/build/libs/*.jar | grep -v -E -- '-(sources|javadoc|dev|api|shadow|slim|all-dev)\.jar$' | head -1)
+          echo "built: $jar"
+          python3 ci/tessellate/finalize.py "$jar" "$MOD_ID" out
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.MOD_ID }}-tessellate
+          path: out/*.jar
+
+      - name: Publish to Warfactory maven
+        env:
+          WARFACTORY_MAVEN_USER: ${{ secrets.WARFACTORY_MAVEN_USER }}
+          WARFACTORY_MAVEN_TOKEN: ${{ secrets.WARFACTORY_MAVEN_TOKEN }}
+        run: bash ci/tessellate/publish.sh out "$MAVEN_GROUP" "$MAVEN_ARTIFACT"

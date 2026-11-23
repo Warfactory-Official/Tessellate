@@ -1,0 +1,18 @@
+diff --git a/common/src/main/java/org/texboobcat/tessellate/mixin/ServerChunkCacheMixin.java b/common/src/main/java/org/texboobcat/tessellate/mixin/ServerChunkCacheMixin.java
+index c9088b2..6dbac29 100644
+--- a/common/src/main/java/org/texboobcat/tessellate/mixin/ServerChunkCacheMixin.java
++++ b/common/src/main/java/org/texboobcat/tessellate/mixin/ServerChunkCacheMixin.java
+@@ -541,6 +541,13 @@ public abstract class ServerChunkCacheMixin implements LevelRegionIndex.Regional
+             if (chunk != null) {
+                 return chunk;
+             }
++            // The holder's allowed status drops with its ticket level, before the leased unload.
++            // An in-flight region task may still read the chunk until that unload waits for it.
++            ChunkAccess latest = holder.getLatestChunk();
++            if (latest != null && latest.getPersistedStatus().isOrAfter(status)
++                && (status != ChunkStatus.FULL || latest instanceof LevelChunk)) {
++                return latest;
++            }
+         }
+ 
+         // A requested load would block this worker on the main thread, which is waiting for it.
